@@ -15,7 +15,10 @@
 4. Get password
 - ```kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo```
 
-5. Deploy via github
+5. Create Namespace for apps
+- ```kubectl create ns argotest```
+
+6. Deploy via github
 - Manually via UI
 
 
