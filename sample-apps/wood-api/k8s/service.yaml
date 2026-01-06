@@ -9,6 +9,6 @@ spec:
   ports:
     - protocol: TCP
       port: 80                      # The Service's internal cluster port
-      targetPort: 8080              # The target port in the Pod/Container
+      targetPort: 8000              # The target port in the Pod/Container
       nodePort: 30083
 
