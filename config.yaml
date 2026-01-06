@@ -12,3 +12,6 @@ nodes:
       - containerPort: 30082   # webserver2
         hostPort: 30082
         protocol: TCP
+      - containerPort: 30083   # wood-api
+        hostPort: 30083
+        protocol: TCP
