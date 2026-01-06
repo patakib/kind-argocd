@@ -28,3 +28,12 @@
 - localhost:30081 - webserver
 - localhost:30082 - webserver2
 - localhost:30083 - wood-api
+
+## ArgoCD
+One root app + three child apps
+This is the fully GitOps version.
+
+- Workloads
+- 4 Argo CD Application manifests:  
+    - 1 root
+    - 3 children

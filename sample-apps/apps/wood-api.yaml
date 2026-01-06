@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: wood-api
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/patakib/kind-argocd.git
+    targetRevision: app-of-apps
+    path: sample-apps/wood-api/k8s
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+
