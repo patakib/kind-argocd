@@ -8,7 +8,7 @@ spec:
 
   source:
     repoURL: https://github.com/patakib/kind-argocd.git
-    targetRevision: app-of-apps
+    targetRevision: master
     path: sample-apps/webserver/k8s
 
   destination:
