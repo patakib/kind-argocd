@@ -27,3 +27,7 @@
 - localhost:30080 - argocd
 - localhost:30081 - webserver
 - localhost:30082 - webserver2
+- localhost:30083 - wood-api
+
+## ArgoCD
+In this branch, One Argo CD Application managing all three apps.
