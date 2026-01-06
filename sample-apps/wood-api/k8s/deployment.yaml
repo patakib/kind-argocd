@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wood-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wood-api
+  template:
+    metadata:
+      labels:
+        app: wood-api
+    spec:
+      containers:
+        - name: wood-api
+          image: patakib/wood-api:latest
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /woods
+              port: 8000
+          livenessProbe:
+            httpGet:
+              path: /woods
+              port: 8000
