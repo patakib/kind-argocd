@@ -1,0 +1,184 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: polars-dag-
+spec:
+  entrypoint: polars-dag
+  templates:
+
+  - name: polars-dag
+    dag:
+      tasks:
+        - name: generate-data
+          template: generate-data
+
+        - name: filter-data
+          dependencies: [generate-data]
+          template: filter-data
+          arguments:
+            artifacts:
+              - name: raw-data
+                from: "{{tasks.generate-data.outputs.artifacts.raw-data}}"
+
+        - name: aggregate-data
+          dependencies: [filter-data]
+          template: aggregate-data
+          arguments:
+            artifacts:
+              - name: filtered-data
+                from: "{{tasks.filter-data.outputs.artifacts.filtered-data}}"
+
+        - name: join-data
+          dependencies: [generate-data, aggregate-data]
+          template: join-data
+          arguments:
+            artifacts:
+              - name: raw-data
+                from: "{{tasks.generate-data.outputs.artifacts.raw-data}}"
+              - name: agg-data
+                from: "{{tasks.aggregate-data.outputs.artifacts.agg-data}}"
+
+        - name: validate
+          dependencies: [join-data]
+          template: validate
+          arguments:
+            artifacts:
+              - name: joined-data
+                from: "{{tasks.join-data.outputs.artifacts.joined-data}}"
+
+
+  # 1. Generate synthetic dataset
+  - name: generate-data
+    script:
+      image: python:3.11-slim
+      command: ["bash"]
+      source: |
+        pip install --no-cache-dir polars
+
+        python << 'EOF'
+        import polars as pl
+
+        df = pl.DataFrame({
+            "user_id": [1,1,2,2,3,3],
+            "country": ["DE","DE","US","US","FR","FR"],
+            "amount": [100, 200, 50, 300, 80, 120]
+        })
+
+        df.write_csv("/tmp/raw.csv")
+        print(df)
+        EOF
+    outputs:
+      artifacts:
+        - name: raw-data
+          path: /tmp/raw.csv
+
+  # 2. Filter rows
+  - name: filter-data
+    inputs:
+      artifacts:
+        - name: raw-data
+          path: /tmp/raw.csv
+    script:
+      image: python:3.11-slim
+      command: ["bash"]
+      source: |
+        pip install --no-cache-dir polars
+
+        python << 'EOF'
+        import polars as pl
+
+        df = pl.read_csv("/tmp/raw.csv")
+
+        filtered = df.filter(pl.col("amount") > 100)
+
+        filtered.write_csv("/tmp/filtered.csv")
+        print(filtered)
+        EOF
+    outputs:
+      artifacts:
+        - name: filtered-data
+          path: /tmp/filtered.csv
+
+  # 3. Aggregate (group by)
+  - name: aggregate-data
+    inputs:
+      artifacts:
+        - name: filtered-data
+          path: /tmp/filtered.csv
+    script:
+      image: python:3.11-slim
+      command: ["bash"]
+      source: |
+        pip install --no-cache-dir polars
+
+        python << 'EOF'
+        import polars as pl
+
+        df = pl.read_csv("/tmp/filtered.csv")
+
+        agg = (
+            df
+            .group_by("user_id")
+            .agg(pl.sum("amount").alias("total_amount"))
+        )
+
+        agg.write_csv("/tmp/agg.csv")
+        print(agg)
+        EOF
+    outputs:
+      artifacts:
+        - name: agg-data
+          path: /tmp/agg.csv
+
+  # 4. Join aggregated results back
+  - name: join-data
+    inputs:
+      artifacts:
+        - name: raw-data
+          path: /tmp/raw.csv
+        - name: agg-data
+          path: /tmp/agg.csv
+    script:
+      image: python:3.11-slim
+      command: ["bash"]
+      source: |
+        pip install --no-cache-dir polars
+
+        python << 'EOF'
+        import polars as pl
+
+        raw = pl.read_csv("/tmp/raw.csv")
+        agg = pl.read_csv("/tmp/agg.csv")
+
+        joined = raw.join(agg, on="user_id", how="left")
+
+        joined.write_csv("/tmp/joined.csv")
+        print(joined)
+        EOF
+    outputs:
+      artifacts:
+        - name: joined-data
+          path: /tmp/joined.csv
+
+  # 5. Final validation
+  - name: validate
+    inputs:
+      artifacts:
+        - name: joined-data
+          path: /tmp/joined.csv
+    script:
+      image: python:3.11-slim
+      command: ["bash"]
+      source: |
+        pip install --no-cache-dir polars
+
+        python << 'EOF'
+        import polars as pl
+
+        df = pl.read_csv("/tmp/joined.csv")
+
+        assert df.select(pl.col("total_amount").is_not_null()).height > 0
+
+        print("Validation passed")
+        print(df)
+        EOF
